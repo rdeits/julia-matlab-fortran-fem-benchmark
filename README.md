@@ -31,6 +31,8 @@ Installation and Running
   [Julia](http://julialang.org/), and a Fortran compiler (tested with
   gfortran and the Intel Fortran compiler).
 
+- Download and install the [FEATool Multiphysics Matlab FEM Toolbox](https://www.featool.com)
+
 - Edit the [testrun_param.txt](https://github.com/precisesimulation/julia-matlab-fortran-fem-benchmark/blob/master/testrun_param.txt#L1)
   file, which contains three parameters
 
