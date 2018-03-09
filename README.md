@@ -153,5 +153,5 @@ along with this program. If not, see
 Feat2D License
 --------------
 
-[FeatFlow](www.featflow.de) and the Feat library is Copyright (C) of
+[FeatFlow](https://github.com/precisesimulation/featflow) and the Feat library is Copyright (C) of
 S. Turek et al. and may fall under a different license agreement.
