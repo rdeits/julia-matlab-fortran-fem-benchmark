@@ -152,7 +152,7 @@ function rectgrid( n_cx = 10, n_cy = 0, xp = [0 1;0 1] )
     if isempty(y)
         y = linspace( y0, y0+ly, n_py )
     end
-    yy = Array(Float64,n_p)
+    yy = Array{Float64}(n_p)
     for j = 1:n_py
         yy[(j-1)*n_px+1:j*n_px] = y[j]
     end
@@ -161,7 +161,7 @@ function rectgrid( n_cx = 10, n_cy = 0, xp = [0 1;0 1] )
 
     # Cell cell connectivities (grid points ordered counterclockwise for
     # each cell starting with the bottom left vertex as the first node).
-    c = Array(Int64,4,n_c)
+    c = Array{Int64}(4,n_c)
     ic = 0
     for j = 1:n_py-1
         for i = 1:n_px-1
@@ -174,7 +174,7 @@ function rectgrid( n_cx = 10, n_cy = 0, xp = [0 1;0 1] )
     end
 
     # Grid cell adjacencies.
-    a = Array(Int64,4,n_c)
+    a = Array{Int64}(4,n_c)
     ic = 0
     for j = 1:n_cy
         for i = 1:n_cx
@@ -204,7 +204,7 @@ function rectgrid( n_cx = 10, n_cy = 0, xp = [0 1;0 1] )
     s = ones(Int64,1,n_c)
 
     # Output.
-    grid = Array(Any,5)
+    grid = Array{Any}(5)
 
     grid[1] = p
     grid[2] = c
