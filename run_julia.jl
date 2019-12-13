@@ -1,9 +1,7 @@
 # FEM Benchmark Julia test run script.
 
 # Copyright 2013-2018 Precise Simulation, Ltd.
-
-
-workspace()
+using DelimitedFiles
 
 include( "src_julia/fem_poisson.jl" )
 
