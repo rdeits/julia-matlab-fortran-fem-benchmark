@@ -1,3 +1,9 @@
+using SparseArrays
+
+
+
+linspace(from, to, N) = collect(range(from, stop = to, length = N))
+
 function fem_poisson( n = 16 )
 # Solves uxx + uyy = 1 on a unit square with Q1 finite elements.
 # Returns the computed solution vector in u, and the timimngs vector where:
@@ -12,51 +18,54 @@ function fem_poisson( n = 16 )
 
 # Copyright 2013-2018 Precise Simulation, Ltd.
 
+tic_time = 0.0
+tic()  = (tic_time = time())
+toq() =  time() - tic_time
 
     # Grid
-    gc_enable(false)
+    GC.enable(false)
     tic()
     nx = n
     ny = n
     grid = rectgrid( nx, ny );
     neq = size( grid[1], 2 )
     t_grid = toq()
-    gc_enable(true)
-    gc()
+    GC.enable(true)
+    GC.gc()
 
 
     # CSR matrix pointers
-    gc_enable(false)
+    GC.enable(false)
     tic()
     kcol, kld, na = ap7( grid[2] )
     t_ptr = toq()
-    gc_enable(true)
-    gc()
+    GC.enable(true)
+    GC.gc()
 
 
     # Assemble system matrix
-    gc_enable(false)
+    GC.enable(false)
     tic()
-    avals = assemblea( grid[1], grid[2], kcol, kld, na, neq )
+    avals = assemblea( Matrix(grid[1]), grid[2], kcol, kld, na, neq )
     t_asm = toq()
-    gc_enable(true)
-    gc()
+    GC.enable(true)
+    GC.gc()
 
 
     # Assemble right hand side
-    gc_enable(false)
+    GC.enable(false)
     tic()
-    f = assemblef( grid[1], grid[2], kcol, kld, na, neq )
+    f = assemblef( Matrix(grid[1]), grid[2], kcol, kld, na, neq )
     t_rhs = toq()
-    gc_enable(true)
-    gc()
+    GC.enable(true)
+    GC.gc()
 
 
     # Boundary conditions
     tic()
     set_boundary_conditions( nx, ny, avals, kld, f )
     t_bdr = toq()
-    gc()
+    GC.gc()
 
 
     # Sparsification
@@ -64,7 +73,7 @@ function fem_poisson( n = 16 )
     rowptr, colptr = convert_csr_to_triplet( avals, kcol, kld )
     A = sparse( rowptr, colptr, avals, neq, neq )
     t_sparse = toq()
-    gc()
+    GC.gc()
 
 
     # Sparse mv
@@ -73,14 +82,13 @@ function fem_poisson( n = 16 )
         tmp = A*f
     end
     t_sparse_mv = toq()/100.0
-    gc()
+    GC.gc()
 
 
     # Solve system
     tic()
     u = A\f
     t_sol = toq()
-
 
     return u, [ t_grid, t_ptr, t_asm, t_rhs, t_bdr, t_sparse, t_sparse_mv, t_sol ]
 
@@ -105,7 +113,7 @@ function set_boundary_conditions( nx, ny, avals, kld, f )
     end
 
     # Set rhs to zero
-    f[bind] = 0.0
+    f[bind] .= 0.0
 
 end
 
@@ -152,16 +160,17 @@ function rectgrid( n_cx = 10, n_cy = 0, xp = [0 1;0 1] )
     if isempty(y)
         y = linspace( y0, y0+ly, n_py )
     end
-    yy = Array(Float64,n_p)
+    yy = fill(0.0,n_p)
     for j = 1:n_py
-        yy[(j-1)*n_px+1:j*n_px] = y[j]
+        yy[(j-1)*n_px+1:j*n_px] .= y[j]
     end
-    xx = repmat( x, n_py, 1 )
+    xx = vcat((vec(x) for idx in 1:n_py)...)
+
     p = [ xx yy ]'
 
     # Cell cell connectivities (grid points ordered counterclockwise for
     # each cell starting with the bottom left vertex as the first node).
-    c = Array(Int64,4,n_c)
+    c = fill(0,4,n_c)
     ic = 0
     for j = 1:n_py-1
         for i = 1:n_px-1
@@ -174,7 +183,7 @@ function rectgrid( n_cx = 10, n_cy = 0, xp = [0 1;0 1] )
     end
 
     # Grid cell adjacencies.
-    a = Array(Int64,4,n_c)
+    a = fill(0, 4,n_c)
     ic = 0
     for j = 1:n_cy
         for i = 1:n_cx
@@ -187,8 +196,8 @@ function rectgrid( n_cx = 10, n_cy = 0, xp = [0 1;0 1] )
         a[2,ic] = 0
         a[4,ic-n_cx+1] = 0
     end
-    a[1,1:n_cx] = 0
-    a[3,n_c-n_cx+1:n_c] = 0
+    a[1,1:n_cx] .= 0
+    a[3,n_c-n_cx+1:n_c] .= 0
 
 
     # Boundary information.
@@ -204,13 +213,13 @@ function rectgrid( n_cx = 10, n_cy = 0, xp = [0 1;0 1] )
     s = ones(Int64,1,n_c)
 
     # Output.
-    grid = Array(Any,5)
+    grid = []
 
-    grid[1] = p
-    grid[2] = c
-    grid[3] = a
-    grid[4] = b
-    grid[5] = s
+    push!(grid, p)
+    push!(grid, c)
+    push!(grid, a)
+    push!(grid, b)
+    push!(grid, s)
 
     return grid
 
@@ -245,14 +254,14 @@ function ap7( kvert::Array{Int64,2} )
     neq = maximum(kvert)
     namax = 15*neq
 
-    kcol = Array{Int64}(namax)
+    kcol = fill(0, namax)
     kld  = zeros(Int64,neq+1)
 
     na    = neq
-    kcol1 = Array{Int64}(namax)
+    kcol1 = fill(0, namax)
     kcol1[1:neq] = 1:neq
-    kind  = Array{Int64}(namax)
-    kind[1:neq]  = 0
+    kind  = fill(0, namax)
+    kind[1:neq]  .= 0
 
     kdfg = zeros(Int64,4)
     kdfl = zeros(Int64,4)
@@ -414,8 +423,9 @@ function assemblea( dcorvg::Array{Float64,2}, kvert::Array{Int64,2},
             for jcoll = 1:idfl
                 if jcoll != irowl             # diagonal already processed
                     jcol = kdfg[jcoll]
-                    for iaj = (ia+1):na       # loop over row entries
-                        if kcola[iaj] == jcol
+                    for liaj = (ia+1):na       # loop over row entries
+                        if kcola[liaj] == jcol
+                        	iaj = liaj
                             break
                         end
                     end
@@ -479,7 +489,6 @@ function assemblea( dcorvg::Array{Float64,2}, kvert::Array{Int64,2},
             end
 
         end   # end loop over cubature points
-
 
         for jdofe = 1:idfl
             for idofe = 1:idfl
@@ -632,9 +641,11 @@ function ngls( kv1::Array{Int64}, kv2::Array{Int64}, idim::Int64 )
 end
 
 
+const q4 = 0.25
+
 function e011( xi1::Float64, xi2::Float64, djac::Array{Float64,2}, bder::Array{Bool}, dbas::Array{Float64,2}, dhelp::Array{Float64,2}, detj::Float64 )
 
-    const q4 = 0.25
+
 
     if( bder[1] )  # function values
         dbas[1,1] = q4*(1.0 - xi1)*(1.0 - xi2)
